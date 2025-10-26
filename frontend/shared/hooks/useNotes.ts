@@ -7,7 +7,9 @@ import {
   ReqCreateNote,
   ReqUpdateNote,
   getListNotesQueryKey,
+  ResDetailNote,
 } from "@/shared/services/generated/api";
+import { useEffect, useState } from "react";
 
 export type ListParams = {
   limit?: number;
@@ -15,11 +17,14 @@ export type ListParams = {
 };
 
 export function useNotes(params: ListParams = { limit: 50, offset: 0 }) {
+  const [notes, setNotes] = useState<ResDetailNote[]>([]);
   const queryClient = useQueryClient();
   const queryKey = getListNotesQueryKey(params);
   // Chỉ wrap generated hook - đơn giản và mạnh mẽ
   const notesQuery = useGeneratedListNotes(params);
-
+  useEffect(() => {
+    setNotes(notesQuery.data?.notes ?? []);
+  }, [notesQuery.data?.notes]);
   // Mutations đơn giản với automatic invalidation
   const createMutation = useMutation({
     mutationFn: (data: ReqCreateNote) => apiCreateNote(data),
@@ -48,7 +53,8 @@ export function useNotes(params: ListParams = { limit: 50, offset: 0 }) {
 
   return {
     // List data
-    notes: notesQuery.data?.notes ?? [],
+    notes,
+    setNotes,
     total: notesQuery.data?.total ?? 0,
     isLoading: notesQuery.isLoading,
     isError: notesQuery.isError,
