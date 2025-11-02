@@ -2,15 +2,10 @@ import React, { useState } from "react";
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
   DragEndEvent,
   DragStartEvent,
   DragOverlay,
   UniqueIdentifier,
-  DragOverEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -19,6 +14,7 @@ import {
   verticalListSortingStrategy,
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useCustomDndSensors } from "./useCustomDndSensors";
 
 export interface DndItem {
   id: string | number;
@@ -42,16 +38,17 @@ export function DndProvider<T extends DndItem>({
 }: DndProviderProps<T>) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // 8px of movement required before drag starts
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  // Use custom sensors hook that removes Space and Enter keys by default
+  const sensors = useCustomDndSensors({
+    activationDistance: 8,
+    navigationKeys: {
+      up: ["ArrowUp"],
+      down: ["ArrowDown"],
+      left: ["ArrowLeft"],
+      right: ["ArrowRight"],
+    },
+    coordinateGetter: sortableKeyboardCoordinates,
+  });
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id);

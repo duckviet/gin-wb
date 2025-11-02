@@ -35,6 +35,9 @@ export default function AddNoteForm({
             tags: [],
             is_public: false,
           });
+          setTitle("");
+          setContent("");
+          setIsFocus(false);
         } catch (err) {
           console.error("Failed to create note", err);
         } finally {

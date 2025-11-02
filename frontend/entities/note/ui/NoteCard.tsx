@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 
 import { PreviewOverlay } from "@/shared/components/PreviewOverlay";
+import { useModal } from "@/shared/contexts/ModalContext";
 
 // Dynamic import to prevent SSR issues
 const FocusEditModal = dynamic(
@@ -44,6 +45,7 @@ export default function NoteCard({
 }: Props) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isFocusEditOpen, setIsFocusEditOpen] = useState(false);
+  const { openModal, closeModal } = useModal();
 
   const handleSaveNote = (data: ReqUpdateNote) => {
     if (onUpdateNote) {
@@ -63,6 +65,7 @@ export default function NoteCard({
 
   const handleFocusEdit = () => {
     setIsFocusEditOpen(true);
+    openModal();
   };
 
   const handlePin = (tom: boolean) => {
@@ -154,7 +157,10 @@ export default function NoteCard({
       {/* Focus Edit Modal */}
       <FocusEditModal
         isOpen={isFocusEditOpen}
-        onClose={() => setIsFocusEditOpen(false)}
+        onClose={() => {
+          setIsFocusEditOpen(false);
+          closeModal();
+        }}
         note={match}
         onSave={handleSaveNote}
       />

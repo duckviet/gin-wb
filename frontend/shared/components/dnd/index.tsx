@@ -13,6 +13,9 @@ export type { DraggableItemProps } from "./DraggableItem";
 export { DroppableZone } from "./DroppableZone";
 export type { DroppableZoneProps } from "./DroppableZone";
 
+export { useCustomDndSensors } from "./useCustomDndSensors";
+export type { UseCustomDndSensorsOptions } from "./useCustomDndSensors";
+
 // Re-export commonly used dnd-kit components and hooks
 export {
   useSortable,

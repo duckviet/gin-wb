@@ -1,6 +1,6 @@
 // HomePage.tsx
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNotes } from "@/shared/hooks/useNotes";
 import { SearchField } from "@/features/search-content";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -25,10 +25,12 @@ import {
 } from "@/shared/components/dnd";
 import { TopOfMind } from "@/features/top-of-mind";
 import { DragEndEvent } from "@dnd-kit/core";
+import { ModalProvider, useModal } from "@/shared/contexts/ModalContext";
 
-export default function HomePage() {
+function HomePageContent() {
   const [query, setQuery] = useState("");
   const [isFabOpen, setIsFabOpen] = useState(false);
+  const { isModalOpen } = useModal();
 
   const {
     notes: notesData,
@@ -155,6 +157,7 @@ export default function HomePage() {
 
   return (
     <MultiZoneDndProvider
+      disabled={isModalOpen}
       onDragEnd={handleDragEnd}
       renderOverlay={(activeId) => {
         const noteId = activeId?.toString();
@@ -192,30 +195,6 @@ export default function HomePage() {
             />
           </SortableContext>
 
-          {/* Main Grid Zone with SortableContext */}
-          {/* <SortableContext
-            items={notes.map((n) => n.id)}
-            strategy={rectSortingStrategy}
-          > */}
-          <DroppableZone
-            id="grid-zone"
-            className="transition-all grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-            activeClassName="ring-2 ring-green-400"
-          >
-            {notes.map((note) => (
-              // <SortableItem key={note.id} id={note.id}>
-              <DraggableItem key={note.id} id={note.id}>
-                <NoteCard
-                  match={note}
-                  onDelete={handleDelete}
-                  onUpdateNote={handleUpdate}
-                  onPin={handleUpdateTopOfMindNote}
-                />
-              </DraggableItem>
-              // </SortableItem>
-            ))}
-          </DroppableZone>
-          {/* </SortableContext> */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-semibold text-text-primary mt-2">
               {query ? "Search Results" : "Your Content"}
@@ -239,45 +218,64 @@ export default function HomePage() {
               }
             />
           ) : (
-            <MasonryGrid data={filteredResults} isLoading={isLoading}>
-              {isLoading && filteredResults.length === 0 ? (
-                <div key="loading">Loading...</div>
-              ) : (
-                <div key="content-grid">
-                  <AnimateCardProvider>
-                    {/* AddNoteForm */}
-                    <div
-                      key="add-note-form"
-                      className="mb-6 break-inside-avoid"
-                    >
-                      <AddNoteForm onCreate={createNote} />
-                    </div>
-                    {/* Notes & Articles */}
-                    {filteredResults.map((note) => (
+            <DroppableZone
+              id="grid-zone"
+              activeClassName="ring-2 ring-green-400"
+            >
+              <MasonryGrid data={filteredResults} isLoading={isLoading}>
+                {isLoading && filteredResults.length === 0 ? (
+                  <div key="loading">Loading...</div>
+                ) : (
+                  <div key="content-grid">
+                    <AnimateCardProvider>
+                      {/* AddNoteForm */}
                       <div
-                        key={note.id}
-                        className="h-fit mb-6 break-inside-avoid"
+                        key="add-note-form"
+                        className="mb-6 break-inside-avoid"
                       >
-                        {note.content_type === "text" ? (
-                          <NoteCard
-                            match={note}
-                            onDelete={handleDelete}
-                            onUpdateNote={handleUpdate}
-                          />
-                        ) : (
-                          <ArticleCard match={note} onDelete={handleDelete} />
-                        )}
+                        <AddNoteForm onCreate={createNote} />
                       </div>
-                    ))}
-                  </AnimateCardProvider>
-                </div>
-              )}
-            </MasonryGrid>
+                      {/* Notes & Articles */}
+
+                      {filteredResults.map((note) => (
+                        // <SortableItem key={note.id} id={note.id}>
+                        <DraggableItem
+                          className="h-fit mb-6 break-inside-avoid"
+                          key={note.id}
+                          id={note.id}
+                        >
+                          {note.content_type === "text" ? (
+                            <NoteCard
+                              match={note}
+                              onDelete={handleDelete}
+                              onUpdateNote={handleUpdate}
+                              onPin={handleUpdateTopOfMindNote}
+                            />
+                          ) : (
+                            <ArticleCard match={note} onDelete={handleDelete} />
+                          )}
+                        </DraggableItem>
+                        // </SortableItem>
+                      ))}
+                      {/* </SortableContext> */}
+                    </AnimateCardProvider>
+                  </div>
+                )}
+              </MasonryGrid>
+            </DroppableZone>
           )}
         </div>
 
         <FloatingActionButton isOpen={isFabOpen} onToggle={handleFabToggle} />
       </div>
     </MultiZoneDndProvider>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <ModalProvider>
+      <HomePageContent />
+    </ModalProvider>
   );
 }

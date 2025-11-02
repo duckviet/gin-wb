@@ -55,7 +55,12 @@ export async function loadHighlighter(opts: HighlighterOptions) {
  * Loads a theme if it's valid and not yet loaded.
  * @returns true or false depending on if it got loaded.
  */
-export async function loadTheme(theme: BundledTheme) {
+export async function loadTheme(theme: BundledTheme | null | undefined) {
+  // Validate theme before proceeding
+  if (!theme) {
+    return false;
+  }
+
   if (!highlighter) {
     highlighter = await getShikiHighlighter();
   }
@@ -66,9 +71,15 @@ export async function loadTheme(theme: BundledTheme) {
     !loadingThemes.has(theme)
   ) {
     loadingThemes.add(theme);
-    await highlighter.loadTheme(theme);
-    loadingThemes.delete(theme);
-    return true;
+    try {
+      await highlighter.loadTheme(theme);
+      loadingThemes.delete(theme);
+      return true;
+    } catch (error) {
+      loadingThemes.delete(theme);
+      console.warn(`Failed to load theme: ${theme}`, error);
+      return false;
+    }
   }
 
   return false;
@@ -78,7 +89,14 @@ export async function loadTheme(theme: BundledTheme) {
  * Loads a language if it's valid and not yet loaded
  * @returns true or false depending on if it got loaded.
  */
-export async function loadLanguage(language: BundledLanguage) {
+export async function loadLanguage(
+  language: BundledLanguage | null | undefined
+) {
+  // Validate language before proceeding
+  if (!language) {
+    return false;
+  }
+
   if (!highlighter) {
     highlighter = await getShikiHighlighter();
   }
@@ -89,9 +107,15 @@ export async function loadLanguage(language: BundledLanguage) {
     !loadingLanguages.has(language)
   ) {
     loadingLanguages.add(language);
-    await highlighter.loadLanguage(language);
-    loadingLanguages.delete(language);
-    return true;
+    try {
+      await highlighter.loadLanguage(language);
+      loadingLanguages.delete(language);
+      return true;
+    } catch (error) {
+      loadingLanguages.delete(language);
+      console.warn(`Failed to load language: ${language}`, error);
+      return false;
+    }
   }
 
   return false;
@@ -122,22 +146,28 @@ export async function initHighlighter({
 }) {
   const codeBlocks = findChildren(doc, (node) => node.type.name === name);
 
-  const themes = [
-    ...codeBlocks.map((block) => block.node.attrs.theme as BundledTheme),
+  // Collect themes and languages, filtering out null/undefined values
+  const themes: (BundledTheme | null | undefined)[] = [
+    ...codeBlocks.map(
+      (block) => block.node.attrs.theme as BundledTheme | undefined
+    ),
     defaultTheme,
-  ];
-  const languages = [
-    ...codeBlocks.map((block) => block.node.attrs.language as BundledLanguage),
+  ].filter((theme): theme is BundledTheme => !!theme);
+
+  const languages: (BundledLanguage | null | undefined)[] = [
+    ...codeBlocks.map(
+      (block) => block.node.attrs.language as BundledLanguage | undefined
+    ),
     defaultLanguage,
-  ];
+  ].filter((language): language is BundledLanguage => !!language);
 
   if (!highlighter) {
     // Sử dụng highlighter từ shiki-setup.ts
     highlighter = await getShikiHighlighter();
   } else {
     await Promise.all([
-      ...themes.flatMap((theme) => loadTheme(theme)),
-      ...languages.flatMap((language) => !!language && loadLanguage(language)),
+      ...themes.map((theme) => loadTheme(theme)),
+      ...languages.map((language) => loadLanguage(language)),
     ]);
   }
 }

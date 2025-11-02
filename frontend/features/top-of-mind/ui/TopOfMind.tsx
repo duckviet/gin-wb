@@ -1,13 +1,6 @@
 import React from "react";
-import {
-  DraggableItem,
-  DroppableZone,
-  SortableItem,
-} from "@/shared/components/dnd";
-import {
-  ResDetailNote,
-  useUpdateNoteTOM,
-} from "@/shared/services/generated/api";
+import { DraggableItem, DroppableZone } from "@/shared/components/dnd";
+import { ResDetailNote } from "@/shared/services/generated/api";
 import TopOfMindCard from "./TopOfMindCard";
 
 type Props = {

@@ -1,4 +1,4 @@
-import React, { CSSProperties, useEffect } from "react";
+import React, { CSSProperties } from "react";
 import { useDroppable } from "@dnd-kit/core";
 
 export interface DroppableZoneProps {
@@ -22,9 +22,7 @@ export function DroppableZone({
   const { isOver, setNodeRef } = useDroppable({
     id,
   });
-  useEffect(() => {
-    console.log("id", id, "isOver", isOver);
-  }, [id, isOver]);
+
   const combinedClassName =
     `${className} ${isOver ? activeClassName : ""}`.trim();
 

@@ -38,7 +38,7 @@ function getDecorations({
   const decorations: Decoration[] = [];
 
   const codeBlocks = findChildren(doc, (node) => node.type.name === name);
-
+  console.log(decorations, codeBlocks);
   for (const block of codeBlocks) {
     let from = block.pos + 1;
     let language = block.node.attrs.language || defaultLanguage;
@@ -75,7 +75,6 @@ function getDecorations({
           dark: getThemeToApply(darkTheme),
         },
       });
-
       const blockStyle: { [prop: string]: string } = {};
       if (tokens.bg) blockStyle["background-color"] = tokens.bg;
       if (tokens.fg) blockStyle.color = tokens.fg;
@@ -91,6 +90,7 @@ function getDecorations({
         lang: language,
         theme: getThemeToApply(theme),
       });
+      console.log(tokens);
 
       const themeToApply = highlighter.getLoadedThemes().includes(theme)
         ? theme
@@ -178,8 +178,27 @@ export function ShikiPlugin({
             defaultTheme,
             themeModes: themes,
           });
-          const tr = view.state.tr.setMeta("shikiPluginForceDecoration", true);
-          view.dispatch(tr);
+
+          // Use setTimeout to ensure view state is stable after async operation
+          // This prevents "mismatched transaction" errors
+          setTimeout(() => {
+            if (!view.dom.isConnected) return; // View has been destroyed
+
+            try {
+              const currentState = view.state;
+              const tr = currentState.tr.setMeta(
+                "shikiPluginForceDecoration",
+                true
+              );
+              view.dispatch(tr);
+            } catch (error) {
+              // Silently ignore if view state doesn't match
+              console.warn(
+                "Shiki plugin: Failed to dispatch decoration transaction",
+                error
+              );
+            }
+          }, 0);
         }
 
         // When new codeblocks were added and they have missing themes or
@@ -191,15 +210,30 @@ export function ShikiPlugin({
           );
 
           const loaderFns = (block: NodeWithPos): Promise<boolean>[] => {
-            const fns = [loadLanguage(block.node.attrs.language)];
+            const fns: Promise<boolean>[] = [];
+
+            // Only load language if it exists and is valid
+            const language = block.node.attrs.language;
+            if (language) {
+              fns.push(loadLanguage(language));
+            }
 
             if (themes) {
-              fns.push(
-                loadTheme(block.node.attrs.themes?.light || themes.light)
-              );
-              fns.push(loadTheme(block.node.attrs.themes?.dark || themes.dark));
+              // Only load themes if they exist and are valid
+              const lightTheme = block.node.attrs.themes?.light || themes.light;
+              const darkTheme = block.node.attrs.themes?.dark || themes.dark;
+              if (lightTheme) {
+                fns.push(loadTheme(lightTheme));
+              }
+              if (darkTheme) {
+                fns.push(loadTheme(darkTheme));
+              }
             } else {
-              fns.push(loadTheme(block.node.attrs.theme));
+              // Only load theme if it exists and is valid
+              const theme = block.node.attrs.theme;
+              if (theme) {
+                fns.push(loadTheme(theme));
+              }
             }
 
             return fns;
@@ -214,14 +248,29 @@ export function ShikiPlugin({
           const didLoadSomething = loadStates.includes(true);
 
           // The asynchronous nature of this is potentially prone to
-          // race conditions. Imma just hope it's fine lol
+          // race conditions. Use setTimeout to ensure view state is stable after async operation
 
           if (didLoadSomething) {
-            const tr = view.state.tr.setMeta(
-              "shikiPluginForceDecoration",
-              true
-            );
-            view.dispatch(tr);
+            // Use setTimeout to ensure view state is stable after async operation
+            // This prevents "mismatched transaction" errors
+            setTimeout(() => {
+              if (!view.dom.isConnected) return; // View has been destroyed
+
+              try {
+                const currentState = view.state;
+                const tr = currentState.tr.setMeta(
+                  "shikiPluginForceDecoration",
+                  true
+                );
+                view.dispatch(tr);
+              } catch (error) {
+                // Silently ignore if view state doesn't match
+                console.warn(
+                  "Shiki plugin: Failed to dispatch decoration transaction",
+                  error
+                );
+              }
+            }, 0);
           }
         }
       }

@@ -1,18 +1,14 @@
 import React, { useState } from "react";
 import {
   DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
+  closestCorners,
   DragEndEvent,
   DragStartEvent,
   DragOverlay,
   UniqueIdentifier,
   DragOverEvent,
-  closestCorners,
 } from "@dnd-kit/core";
+import { useCustomDndSensors } from "./useCustomDndSensors";
 
 export interface MultiZoneDndProviderProps {
   children: React.ReactNode;
@@ -20,6 +16,7 @@ export interface MultiZoneDndProviderProps {
   onDragStart?: (event: DragStartEvent) => void;
   onDragOver?: (event: DragOverEvent) => void;
   renderOverlay?: (activeId: UniqueIdentifier | null) => React.ReactNode;
+  disabled?: boolean;
 }
 
 /**
@@ -32,19 +29,22 @@ export function MultiZoneDndProvider({
   onDragStart,
   onDragOver,
   renderOverlay,
+  disabled = false,
 }: MultiZoneDndProviderProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // 8px of movement required before drag starts
-      },
-    }),
-    useSensor(KeyboardSensor)
-  );
+  // Use custom sensors hook that removes Space and Enter keys by default
+  // Only allows mouse/touch drag and arrow keys for navigation
+  const sensors = useCustomDndSensors({
+    disabled,
+    activationDistance: 8,
+  });
 
   const handleDragStart = (event: DragStartEvent) => {
+    // Prevent drag when disabled
+    if (disabled) {
+      return;
+    }
     setActiveId(event.active.id);
     if (onDragStart) {
       onDragStart(event);
