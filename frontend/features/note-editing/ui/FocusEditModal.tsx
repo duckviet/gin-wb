@@ -8,13 +8,10 @@ import React, {
   useMemo,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Save, Tag, FileText, Plus, AlertCircle } from "lucide-react";
+import { X, Tag, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Portal from "@/shared/components/PortalModal/PortalModal";
-import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
-import { Textarea } from "@/shared/components/ui/textarea";
-// import { Badge } from "@/shared/components/ui/badge";
 import { RichTextEditor } from "@/shared/components/RichTextEditor";
 import { NoteCardProps } from "@/entities/note/ui/NoteCard";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -135,7 +132,7 @@ export default function FocusEditModal({
     }));
   }, []);
 
-  // Auto-save on title change after validation
+  // Optimistic auto-save with setQueryData on onSuccess
   const autoSaveMutation = useMutation({
     mutationFn: (data: { title: string; content: string }) =>
       updateNote(note.id, {
@@ -149,9 +146,60 @@ export default function FocusEditModal({
         is_public: note.is_public || false,
       }),
     onMutate: () => setIsSaving(true),
-    onSuccess: () => {
+    onSuccess: (updated, variables) => {
+      // Optimistically update cache for the list and individual note
+      queryClient.setQueryData(["note", note.id], (old: any) => ({
+        ...old,
+        ...{
+          ...note,
+          ...{
+            title: variables.title,
+            content: variables.content,
+            tags: formData.tags,
+          },
+        },
+      }));
+
+      // Optimistically update the notes list if available
+      queryClient.setQueryData(["notes"], (old: any) => {
+        if (!old) return old;
+        // Support paginated or flat arrays of notes
+        // Simple flat array
+        if (Array.isArray(old)) {
+          return old.map((item) =>
+            item.id === note.id
+              ? {
+                  ...item,
+                  title: variables.title,
+                  content: variables.content,
+                  tags: formData.tags,
+                }
+              : item
+          );
+        }
+        // Paginated data (e.g., {pages: [{items: []}, ...]})
+        if (old.pages) {
+          return {
+            ...old,
+            pages: old.pages.map((page: any) => ({
+              ...page,
+              items: page.items.map((item: any) =>
+                item.id === note.id
+                  ? {
+                      ...item,
+                      title: variables.title,
+                      content: variables.content,
+                      tags: formData.tags,
+                    }
+                  : item
+              ),
+            })),
+          };
+        }
+        return old;
+      });
+
       toast.success("Note auto-saved");
-      // queryClient.invalidateQueries({ queryKey: ["notes"] });
     },
     onError: (error) => {
       toast.error("Failed to auto-save note");
@@ -233,7 +281,7 @@ export default function FocusEditModal({
             content: formData.content,
           });
         }
-      }, 2000); // Increased debounce time to 2 seconds to reduce API calls
+      }, 2000);
 
       return () => clearTimeout(timer);
     }
@@ -276,6 +324,50 @@ export default function FocusEditModal({
         await onSave(payload);
       }
 
+      // Optimistically update the cache
+      queryClient.setQueryData(["note", note.id], (old: any) => ({
+        ...old,
+        ...note,
+        title: formData.title,
+        content: formData.content,
+        tags: formData.tags,
+      }));
+
+      queryClient.setQueryData(["notes"], (old: any) => {
+        if (!old) return old;
+        if (Array.isArray(old)) {
+          return old.map((item) =>
+            item.id === note.id
+              ? {
+                  ...item,
+                  title: formData.title,
+                  content: formData.content,
+                  tags: formData.tags,
+                }
+              : item
+          );
+        }
+        if (old.pages) {
+          return {
+            ...old,
+            pages: old.pages.map((page: any) => ({
+              ...page,
+              items: page.items.map((item: any) =>
+                item.id === note.id
+                  ? {
+                      ...item,
+                      title: formData.title,
+                      content: formData.content,
+                      tags: formData.tags,
+                    }
+                  : item
+              ),
+            })),
+          };
+        }
+        return old;
+      });
+
       toast.success("Note saved successfully");
       onClose();
     } catch (error) {
@@ -292,6 +384,7 @@ export default function FocusEditModal({
     onSave,
     onClose,
     validateTitle,
+    queryClient,
   ]);
 
   const handleKeyDown = useCallback(
@@ -394,7 +487,6 @@ export default function FocusEditModal({
                         onBlur={handleTitleBlur}
                         placeholder="Note title..."
                         className="w-full text-2xl font-semibold bg-transparent border-none outline-none text-text-primary placeholder:text-text-muted resize-none"
-                        disabled={isSaving}
                         maxLength={200}
                       />
                       {titleError && (
@@ -412,7 +504,7 @@ export default function FocusEditModal({
                       onContentChange={handleContentChange}
                       content={formData.content}
                       className="max-h-full min-h-[600px]"
-                      editable={!isSaving}
+                      editable={true}
                     />
                   </div>
 
