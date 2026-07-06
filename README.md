@@ -5,7 +5,7 @@ Local development uses four services:
 - Frontend: Next.js app at `http://localhost:3000`
 - Backend: Go API at `http://localhost:8080/api/v1`
 - Collab server: Yjs websocket server at `ws://localhost:1234`
-- AI service: FastAPI service at `http://localhost:8090`
+- AI service: FastAPI service at `http://localhost:8090`.
 
 ## Prerequisites
 
