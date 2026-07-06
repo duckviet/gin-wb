@@ -2576,7 +2576,6 @@ components:
           example: '#5a8a7d'
       required:
         - name
-        - icon
         - content
     Req_UpdateTemplate:
       type: object
